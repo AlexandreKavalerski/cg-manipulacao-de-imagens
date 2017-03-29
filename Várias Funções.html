@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Trabalhão</title>
+    <script src="https://cdn.rawgit.com/oliver-moran/jimp/v0.2.27/browser/lib/jimp.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+	<!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	
+    <script type="text/javascript">
+	var cont = 0;
+	arrayImagem = new Array();
+	arrayLimiar = new Array();
+	var maiorCor = [-1000,-1000,-1000]; //[0]= Vermelho, [1]= Verde, [2]= Azul;
+	var menorCor = [1000,1000,1000]; //[0]= Vermelho, [1]= Verde, [2]= Azul;
+	var vetorR = [];
+	var vetorG = [];
+	var vetorB = [];
+	var labels = [];
+	
+	function mostrarImagem(elemento, numero){
+		var arquivo = elemento.files[0];
+		var reader = new FileReader();
+		reader.readAsArrayBuffer(arquivo);
+		reader.addEventListener('load', function(){
+			Jimp.read(this.result)
+			.then(function(imagem){
+			  imagem = imagem.resize(670,550);
+			  switch(numero){
+				case 0:
+					arrayImagem[0] = imagem;
+					break;
+				case 1:
+					arrayImagem[1] = imagem;
+			  }
+			  exibirImagem(imagem);
+			})
+			.catch(function(erro){
+			  console.log('Não foi possível processar os dados da imagem.');
+			  console.log(erro);
+			});
+		});
+	}
+	
+	function exibirImagem(imagem) {
+		imagem.getBase64(Jimp.MIME_JPEG, function(err, src){
+			var img = document.createElement("img");
+			img.setAttribute("src", src);
+			document.body.appendChild(img);
+		});
+	}
+	
+	function manipulaImagem(elemento, filtro, indice) {
+		if(arrayImagem[indice] != null){
+			var t = parseInt(elemento.value);
+			var imagemClone = arrayImagem[indice].clone();
+			var w = imagemClone.bitmap.width;
+			var h = imagemClone.bitmap.height;
+
+			for(var i = 0; i < w; i++) {
+				for(var j = 0; j < h; j++) {
+					var cor = imagemClone.getPixelColor(i,j);
+					var rgba = Jimp.intToRGBA(cor);
+					switch(filtro){
+						case 0: // Negativo
+							var vermelho = 255 - rgba.r;
+							var verde = 255 - rgba.g;
+							var azul = 255 - rgba.b;
+							var hex = Jimp.rgbaToInt(vermelho, verde, azul, rgba.a);
+							imagemClone.setPixelColor(hex, i, j);
+							break;
+						case 1: // Limiarização
+							soma = Math.floor((rgba.r + rgba.g + rgba.b)/3);
+							if(soma <= t){
+								var soma = 0;
+							}else{soma = 255;}
+							var hex = Jimp.rgbaToInt(soma, soma, soma, rgba.a);
+							imagemClone.setPixelColor(hex, i, j);
+							arrayLimiar[indice] = imagemClone;
+					}				
+				}
+			}
+			exibirImagemFinal(imagemClone);
+		}
+		else{
+			alert("Selecione uma imagem primeiro!");
+		}
+	}
+	
+	function manipulaDuasImagens(filtro){
+		if(arrayImagem.length == 2){
+			var imagemClone1 = arrayImagem[0].clone();
+			var imagemClone2 = arrayImagem[1].clone();
+			var w = imagemClone1.bitmap.width;
+			var h = imagemClone1.bitmap.height;
+			var imagemFinal = new Jimp(670,550, function(err, image){});
+			
+			if(filtro == 0 || filtro == 1){
+				manipulaImagem(200, 1, 0);
+				manipulaImagem(200, 1, 1);
+			}
+			else if(filtro == 2|| filtro == 3|| filtro == 4|| filtro == 5){
+				maior_E_menor(filtro, imagemClone1, imagemClone2);
+			}
+			
+			for(var i = 0; i < w; i++) {
+				for(var j = 0; j < h; j++) {
+					var cor1 = imagemClone1.getPixelColor(i,j);
+					var rgba1 = Jimp.intToRGBA(cor1);
+					var cor2 = imagemClone2.getPixelColor(i,j);
+					var rgba2 = Jimp.intToRGBA(cor2);
+					switch(filtro){
+						case 0: // AND
+							if(rgba1.r == 255 && rgba2.r == 255){
+								var vermelho = 255;
+							}else{vermelho = 0;}
+							if(rgba1.g == 255 && rgba2.g == 255){
+								var verde = 255;
+							}else{verde = 0;}
+							if(rgba1.b == 255 && rgba2.b == 255){
+								var azul = 255;
+							}else{azul = 0;}
+							var hex = Jimp.rgbaToInt(vermelho, verde, azul, rgba1.a);
+							imagemFinal.setPixelColor(hex, i, j);
+							break;
+						case 1: // OR
+							if(rgba1.r == 255 || rgba2.r == 255){
+								var vermelho = 255;
+							}else{vermelho = 0;}
+							if(rgba1.g == 255 || rgba2.g == 255){
+								var verde = 255;
+							}else{verde = 0;}
+							if(rgba1.b == 255 || rgba2.b == 255){
+								var azul = 255;
+							}else{azul = 0;}
+							var hex = Jimp.rgbaToInt(vermelho, verde, azul, rgba1.a);
+							imagemFinal.setPixelColor(hex, i, j);
+							break;
+						case 2: // SOMA
+							var vermelho = rgba1.r + rgba2.r;
+							var verde = rgba1.g + rgba2.g;
+							var azul = rgba1.b + rgba2.b;
+							
+							vermelho = escalonamento(vermelho, 0);
+							verde = escalonamento(verde, 1);
+							azul = escalonamento(azul, 2);
+							
+							var hex = Jimp.rgbaToInt(vermelho, verde, azul, rgba1.a);
+							imagemFinal.setPixelColor(hex, i, j);
+							break;
+						case 3: // SUBTRAÇÃO
+							var vermelho = rgba1.r - rgba2.r;
+							var verde = rgba1.g - rgba2.g;
+							var azul = rgba1.b - rgba2.b;
+							
+							vermelho = escalonamento(vermelho, 0);
+							verde = escalonamento(verde, 1);
+							azul = escalonamento(azul, 2);
+							
+							var hex = Jimp.rgbaToInt(vermelho, verde, azul, rgba1.a);
+							imagemFinal.setPixelColor(hex, i, j);
+							break;
+						case 4:	// MULTIPLICAÇÃO
+							var vermelho = rgba1.r * rgba2.r;
+							var verde = rgba1.g * rgba2.g;
+							var azul = rgba1.b * rgba2.b;
+							
+							vermelho = escalonamento(vermelho, 0);
+							verde = escalonamento(verde, 1);
+							azul = escalonamento(azul, 2);
+							
+							var hex = Jimp.rgbaToInt(vermelho, verde, azul, rgba1.a);
+							imagemFinal.setPixelColor(hex, i, j);
+							break;
+						case 5: // DIVISÃO
+							var vermelho = Math.floor(rgba1.r / rgba2.r);
+							var verde = Math.floor(rgba1.g / rgba2.g);
+							var azul = Math.floor(rgba1.b / rgba2.b);
+							
+							vermelho = escalonamento(vermelho, 0);
+							verde = escalonamento(verde, 1);
+							azul = escalonamento(azul, 2);
+							
+							var hex = Jimp.rgbaToInt(vermelho, verde, azul, rgba1.a);
+							imagemFinal.setPixelColor(hex, i, j);
+					}
+				}
+			}
+			exibirImagemFinal(imagemFinal);
+		}
+		else{
+			alert("Você precisa de uma imagem A e imagem B!");
+		}
+	}
+	
+	function maior_E_menor(filtro, imagem1, imagem2){
+		var w = imagem1.bitmap.width;
+		var h = imagem1.bitmap.height;
+		maiorCor = [-1000,-1000,-1000]; //[0]= Vermelho, [1]= Verde, [2]= Azul;
+		menorCor = [1000,1000,1000]; //[0]= Vermelho, [1]= Verde, [2]= Azul;
+		
+		for(var i = 0; i < w; i++) {
+			for(var j = 0; j < h; j++) {
+				var cor1 = imagem1.getPixelColor(i,j);
+				var rgba1 = Jimp.intToRGBA(cor1);
+				var cor2 = imagem2.getPixelColor(i,j);
+				var rgba2 = Jimp.intToRGBA(cor2);
+				switch(filtro){
+					case 2:
+						var vermelho = rgba1.r + rgba2.r;
+						var verde = rgba1.g + rgba2.g;
+						var azul = rgba1.b + rgba2.b;
+						break;
+					case 3:
+						var vermelho = rgba1.r - rgba2.r;
+						var verde = rgba1.g - rgba2.g;
+						var azul = rgba1.b - rgba2.b;
+						break;
+					case 4:
+						var vermelho = rgba1.r * rgba2.r;
+						var verde = rgba1.g * rgba2.g;
+						var azul = rgba1.b * rgba2.b;
+						break;
+					case 5:
+						var vermelho = Math.floor(rgba1.r / rgba2.r);
+						var verde = Math.floor(rgba1.g / rgba2.g);
+						var azul = Math.floor(rgba1.b / rgba2.b);
+						break;
+				}
+				if(vermelho > maiorCor[0]){	//verifica se há um pixel com cor maior
+					maiorCor[0] = vermelho;	//[0]= Vermelho, [1]= Verde, [2]= Azul;
+				}
+				if(verde > maiorCor[1]){
+					maiorCor[1] = verde;
+				}
+				if(azul > maiorCor[2]){
+					maiorCor[2] = azul;
+				}
+				
+				if(vermelho < menorCor[0]){	//verifica se há um pixel com cor menor
+					menorCor[0] = vermelho;
+				}
+				if(verde < menorCor[1]){
+					menorCor[1] = verde;
+				}
+				if(azul < menorCor[2]){
+					menorCor[2] = azul;
+				}
+			}
+		}
+	}
+	
+	function escalonamento(cor, indice){
+		var x = Math.floor((255/(maiorCor[indice] - menorCor[indice]))*(cor - menorCor[indice]));	//[0]= Vermelho, [1]= Verde, [2]= Azul;
+		if(x > 255){
+			x = 255;
+		}
+		else if (x < 0){
+			x = 0;
+		}
+		return x;
+	}
+	
+	function filtragemEspacial(filtro, indice){
+		var imagemClone = arrayImagem[indice].clone();
+		var w = imagemClone.bitmap.width;
+		var h = imagemClone.bitmap.height;
+		
+		for(var i = 0; i < w; i++) {
+			for(var j = 0; j < h; j++) {
+				var cor = imagemClone.getPixelColor(i,j);
+				var rgba = Jimp.intToRGBA(cor);
+				
+				if(rgba.r > maiorCor[0]){	//verifica se há um pixel com cor maior
+					maiorCor[0] = rgba.r;	//[0]= Vermelho, [1]= Verde, [2]= Azul;
+				}
+				if(rgba.g > maiorCor[1]){
+					maiorCor[1] = rgba.g;
+				}
+				if(rgba.b > maiorCor[2]){
+					maiorCor[2] = rgba.b;
+				}
+				
+				if(rgba.r < menorCor[0]){	//verifica se há um pixel com cor menor
+					menorCor[0] = rgba.r;
+				}
+				if(rgba.g < menorCor[1]){
+					menorCor[1] = rgba.g;
+				}
+				if(rgba.b < menorCor[2]){
+					menorCor[2] = rgba.b;
+				}
+			}
+		}
+		
+		switch(filtro){
+			case 0:
+				var filtro = [[-1,-1,-1],[-1,8,-1],[-1,-1,-1]]; // REALCE
+				break;
+			case 1:
+				var filtro = [[1,1,1],[1,1,1],[1,1,1]]; // SUAVIZAR
+				break;
+			case 2:
+				var filtro = [[1,-2,1],[-2,3,-2],[1,-2,1]]; // SUAVIZAR
+				break;
+		}
+		
+		for(var i = 1; i < w-1; i++) {
+			for(var j = 1; j < h-1; j++) {
+				var somaVermelho = 0;
+				var somaVerde = 0;
+				var somaAzul = 0;
+				var g = 0;
+				var t = 0;
+				for(var x = i-1; x < i+2; x++) {
+					for(var y = j-1; y < j+2; y++) {
+						var cor = imagemClone.getPixelColor(x,y);
+						var rgba = Jimp.intToRGBA(cor);
+						somaVermelho = (filtro[g][t]*rgba.r) + somaVermelho;
+						somaVerde = (filtro[g][t]*rgba.g) + somaVerde;
+						somaAzul = (filtro[g][t]*rgba.b) + somaAzul;
+						t++;
+					}
+					g++;
+					t = 0;
+				}
+				somaVermelho = Math.floor(somaVermelho/9);
+				somaVerde = Math.floor(somaVerde/9);
+				somaAzul = Math.floor(somaAzul/9);
+				
+				somaVermelho = escalonamento(somaVermelho, 0);
+				somaVerde = escalonamento(somaVerde, 1);
+				somaAzul = escalonamento(somaAzul, 2)
+				
+				var hex = Jimp.rgbaToInt(somaVermelho, somaVerde, somaAzul, rgba.a);
+				imagemClone.setPixelColor(hex, i, j);
+			}
+		}
+		exibirImagemFinal(imagemClone);
+	}
+	
+	function geraHistograma(indice, filtro) {
+		if(arrayImagem[indice] != null){
+			var imagemClone = arrayImagem[indice].clone();
+			var w = imagemClone.bitmap.width;
+			var h = imagemClone.bitmap.height;
+			vetorR = [];
+			vetorG = [];
+			vetorB = [];
+			labels = [];
+			
+			for(var i = 0; i< 256; i++){
+				vetorR.push(0);
+				vetorG.push(0);
+				vetorB.push(0);
+				labels.push(i);
+			}
+			for(var i = 0; i < w; i++) {
+				for(var j = 0; j < h; j++) {
+					var cor = imagemClone.getPixelColor(i, j);
+					var rgba = Jimp.intToRGBA(cor);
+					vetorR[rgba.r]++;
+					vetorG[rgba.g]++;
+					vetorB[rgba.b]++;
+				}
+			}
+		
+			switch(filtro){
+				case 0:
+					graficosHistograma(vetorR, vetorG, vetorB);
+					break;
+				case 1:
+					histogramaAcumulado();
+					break;
+				case 2:
+					histogramaNormalizado(w*h);
+					break;
+				case 3:
+					histogramaNormalizadoAcumulado();
+					break;
+				case 4:
+					histogramaEqualizado(imagemClone);
+					break;
+			}
+			graficosHistograma(vetorR, vetorG, vetorB);
+		}
+		else{
+			alert("Selecione uma imagem primeiro!");
+		}
+		
+	}
+	function histogramaAcumulado(){
+		for(var i = 1; i < 256; i++) {
+			vetorR[i] = vetorR[i] + vetorR[i - 1];
+			vetorG[i] = vetorG[i] + vetorG[i - 1];
+			vetorB[i] = vetorB[i] + vetorB[i - 1];
+		}
+	}
+	
+	/* Histograma Normalizado */
+	function histogramaNormalizado(tamanhoImagem) {
+		for(var z = 0; z < 256; z++){
+			vetorR[z] /= tamanhoImagem;
+			vetorG[z] /= tamanhoImagem;
+			vetorB[z] /= tamanhoImagem;
+		}
+	}
+	
+	function histogramaNormalizadoAcumulado(){
+		histogramaNormalizado(w*h);
+		histogramaAcumulado();
+	}
+	
+	function histogramaEqualizado(imagem){
+		histogramaNormalizadoAcumulado();
+		for(var z = 0; z < 256; z++){
+			vetorR[z] = vetorR[z] * 255;
+			vetorG[z] = vetorG[z] * 255;
+			vetorB[z] = vetorB[z] * 255;
+		}
+		var imagemClone = arrayImagem[indice].clone();
+		var w = imagemClone.bitmap.width;
+		var h = imagemClone.bitmap.height;
+		for(var i = 0; i < w; i++) {
+			for(var j = 0; j < h; j++) {
+				var cor = imagemClone.getPixelColor(i, j);
+				var rgba = Jimp.intToRGBA(cor);
+			}
+		}
+		rgba.r = vetorR[rgba.r];
+	}
+	
+	function graficosHistograma(vermelho, verde, azul) {
+            
+			var ctx = document.getElementById("myChart");
+
+            var myLineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: ["Red"],
+                            fill: false,
+                            lineTension: 0.1,
+                            backgroundColor: "rgba(242, 38, 19,0.4)",
+                            borderColor: "rgba(242, 38, 19,1)",
+                            borderCapStyle: 'butt',
+                            borderDash: [],
+                            borderDashOffset: 0.0,
+                            borderJoinStyle: 'miter',
+                            pointBorderColor: "rgba(242, 38, 19,1)",
+                            pointBackgroundColor: "#fff",
+                            pointBorderWidth: 1,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: "rgba(242, 38, 19,1)",
+                            pointHoverBorderColor: "rgba(220,220,220,1)",
+                            pointHoverBorderWidth: 2,
+                            pointRadius: 1,
+                            pointHitRadius: 10,
+                            data: vermelho,
+                            spanGaps: false
+                        },
+                        {
+                            label: ["Green"],
+                            fill: false,
+                            lineTension: 0.1,
+                            backgroundColor: "rgba(38, 194, 129,0.4)",
+                            borderColor: "rgba(38, 194, 129,1)",
+                            borderCapStyle: 'butt',
+                            borderDash: [],
+                            borderDashOffset: 0.0,
+                            borderJoinStyle: 'miter',
+                            pointBorderColor: "rgba(38, 194, 129,1)",
+                            pointBackgroundColor: "#fff",
+                            pointBorderWidth: 1,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: "rgba(38, 194, 129,1)",
+                            pointHoverBorderColor: "rgba(220,220,220,1)",
+                            pointHoverBorderWidth: 2,
+                            pointRadius: 1,
+                            pointHitRadius: 10,
+                            data: verde,
+                            spanGaps: false
+                        },
+                        {
+                            label: ["Blue"],
+                            fill: false,
+                            lineTension: 0.1,
+                            backgroundColor: "rgba(65, 131, 215,0.4)",
+                            borderColor: "rgba(65, 131, 215,1)",
+                            borderCapStyle: 'butt',
+                            borderDash: [],
+                            borderDashOffset: 0.0,
+                            borderJoinStyle: 'miter',
+                            pointBorderColor: "rgba(65, 131, 215,1)",
+                            pointBackgroundColor: "#fff",
+                            pointBorderWidth: 1,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: "rgba(65, 131, 215,1)",
+                            pointHoverBorderColor: "rgba(220,220,220,1)",
+                            pointHoverBorderWidth: 2,
+                            pointRadius: 1,
+                            pointHitRadius: 10,
+                            data: azul,
+                            spanGaps: false
+                        }
+                    ]
+                }
+            });
+		}
+	
+	function exibirImagemFinal(imagem) {
+        imagem.getBase64(Jimp.MIME_JPEG, function(err, src){
+            var img = document.getElementById('display');
+            img.setAttribute('src', src);
+        });
+    }
+	</script>
+	</head>
+	<body>
+	<div style="float:left">
+		<p>Escolha um arquivo de imagem A</p>
+		<input type="file" onchange="mostrarImagem(this, 0)">
+		<p>Escolha um valor para o threshold</p>
+		<input type="number" id="valor-threshold" value="206" onchange="manipulaImagem(this, 1, 0)">
+		<input type="button" onclick="manipulaImagem(0, 0, 0)" value="Negativo">
+		<input type="button" onclick="geraHistograma(0, 0)" value="Histograma básico">
+		<input type="button" onclick="geraHistograma(0, 2)" value="Histograma normalizado">
+		<input type="button" onclick="geraHistograma(0, 3)" value="Histograma normalizado acumulado">
+		<input type="button" onclick="filtragemEspacial(0, 0)" value="Filtragem">
+		<br>
+	</div>
+	
+	<div style="display:inline-block;margin-left:17%">
+		<input type="button" onclick="manipulaDuasImagens(0)" value="E">
+		<input type="button" onclick="manipulaDuasImagens(1)" value="OU">
+		<input type="button" onclick="manipulaDuasImagens(2)" value="SOMA">
+		<input type="button" onclick="manipulaDuasImagens(3)" value="SUBTRAÇÃO">
+		<input type="button" onclick="manipulaDuasImagens(4)" value="MULTIPLICAÇÃO">
+		<input type="button" onclick="manipulaDuasImagens(5)" value="DIVISÃO">
+		<br>
+		<img id="display">
+	</div>
+	<div class="row">
+		<div class="col-md-12 col-lg-12">
+			<canvas id="myChart"></canvas>
+		</div>
+	</div>
+	
+	<div style="float:right">
+		<p>Escolha um arquivo de imagem B</p>
+		<input type="file" onchange="mostrarImagem(this, 1)">
+		<p>Escolha um valor para o threshold</p>
+		<input type="number" id="valor-threshold" value="206" onchange="manipulaImagem(this, 1, 1)">
+		<input type="button" onclick="manipulaImagem(0, 0, 1)" value="Negativo">
+		<input type="button" onclick="geraHistograma(1, 1)" value="Histograma">
+		<input type="button" onclick="filtragemEspacial(1, 1)" value="Filtragem">
+		<br>
+	</div>
+	<br><br>
+	
+	</body>
+</html>
