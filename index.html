@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Trabalhão</title>
+    <title>Manipulação de imagens</title>
     <script src="https://cdn.rawgit.com/oliver-moran/jimp/v0.2.27/browser/lib/jimp.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
 	<!-- Latest compiled and minified CSS -->
@@ -263,81 +263,86 @@
 	}
 	
 	function filtragemEspacial(filtro, indice){
-		var imagemClone = arrayImagem[indice].clone();
-		var w = imagemClone.bitmap.width;
-		var h = imagemClone.bitmap.height;
-		
-		for(var i = 0; i < w; i++) {
-			for(var j = 0; j < h; j++) {
-				var cor = imagemClone.getPixelColor(i,j);
-				var rgba = Jimp.intToRGBA(cor);
-				
-				if(rgba.r > maiorCor[0]){	//verifica se há um pixel com cor maior
-					maiorCor[0] = rgba.r;	//[0]= Vermelho, [1]= Verde, [2]= Azul;
-				}
-				if(rgba.g > maiorCor[1]){
-					maiorCor[1] = rgba.g;
-				}
-				if(rgba.b > maiorCor[2]){
-					maiorCor[2] = rgba.b;
-				}
-				
-				if(rgba.r < menorCor[0]){	//verifica se há um pixel com cor menor
-					menorCor[0] = rgba.r;
-				}
-				if(rgba.g < menorCor[1]){
-					menorCor[1] = rgba.g;
-				}
-				if(rgba.b < menorCor[2]){
-					menorCor[2] = rgba.b;
-				}
-			}
-		}
-		
-		switch(filtro){
-			case 0:
-				var filtro = [[-1,-1,-1],[-1,8,-1],[-1,-1,-1]]; // REALCE
-				break;
-			case 1:
-				var filtro = [[1,1,1],[1,1,1],[1,1,1]]; // SUAVIZAR
-				break;
-			case 2:
-				var filtro = [[1,-2,1],[-2,3,-2],[1,-2,1]]; // SUAVIZAR
-				break;
-		}
-		
-		for(var i = 1; i < w-1; i++) {
-			for(var j = 1; j < h-1; j++) {
-				var somaVermelho = 0;
-				var somaVerde = 0;
-				var somaAzul = 0;
-				var g = 0;
-				var t = 0;
-				for(var x = i-1; x < i+2; x++) {
-					for(var y = j-1; y < j+2; y++) {
-						var cor = imagemClone.getPixelColor(x,y);
-						var rgba = Jimp.intToRGBA(cor);
-						somaVermelho = (filtro[g][t]*rgba.r) + somaVermelho;
-						somaVerde = (filtro[g][t]*rgba.g) + somaVerde;
-						somaAzul = (filtro[g][t]*rgba.b) + somaAzul;
-						t++;
+		if(arrayImagem[indice] != null){
+			var imagemClone = arrayImagem[indice].clone();
+			var w = imagemClone.bitmap.width;
+			var h = imagemClone.bitmap.height;
+			
+			for(var i = 0; i < w; i++) {
+				for(var j = 0; j < h; j++) {
+					var cor = imagemClone.getPixelColor(i,j);
+					var rgba = Jimp.intToRGBA(cor);
+					
+					if(rgba.r > maiorCor[0]){	//verifica se há um pixel com cor maior
+						maiorCor[0] = rgba.r;	//[0]= Vermelho, [1]= Verde, [2]= Azul;
 					}
-					g++;
-					t = 0;
+					if(rgba.g > maiorCor[1]){
+						maiorCor[1] = rgba.g;
+					}
+					if(rgba.b > maiorCor[2]){
+						maiorCor[2] = rgba.b;
+					}
+					
+					if(rgba.r < menorCor[0]){	//verifica se há um pixel com cor menor
+						menorCor[0] = rgba.r;
+					}
+					if(rgba.g < menorCor[1]){
+						menorCor[1] = rgba.g;
+					}
+					if(rgba.b < menorCor[2]){
+						menorCor[2] = rgba.b;
+					}
 				}
-				somaVermelho = Math.floor(somaVermelho/9);
-				somaVerde = Math.floor(somaVerde/9);
-				somaAzul = Math.floor(somaAzul/9);
-				
-				somaVermelho = escalonamento(somaVermelho, 0);
-				somaVerde = escalonamento(somaVerde, 1);
-				somaAzul = escalonamento(somaAzul, 2)
-				
-				var hex = Jimp.rgbaToInt(somaVermelho, somaVerde, somaAzul, rgba.a);
-				imagemClone.setPixelColor(hex, i, j);
 			}
+			
+			switch(filtro){
+				case 0:
+					var filtro = [[-1,-1,-1],[-1,8,-1],[-1,-1,-1]]; // REALCE
+					break;
+				case 1:
+					var filtro = [[1,1,1],[1,1,1],[1,1,1]]; // SUAVIZAR
+					break;
+				case 2:
+					var filtro = [[1,-2,1],[-2,3,-2],[1,-2,1]]; // SUAVIZAR
+					break;
+			}
+			
+			for(var i = 1; i < w-1; i++) {
+				for(var j = 1; j < h-1; j++) {
+					var somaVermelho = 0;
+					var somaVerde = 0;
+					var somaAzul = 0;
+					var g = 0;
+					var t = 0;
+					for(var x = i-1; x < i+2; x++) {
+						for(var y = j-1; y < j+2; y++) {
+							var cor = imagemClone.getPixelColor(x,y);
+							var rgba = Jimp.intToRGBA(cor);
+							somaVermelho = (filtro[g][t]*rgba.r) + somaVermelho;
+							somaVerde = (filtro[g][t]*rgba.g) + somaVerde;
+							somaAzul = (filtro[g][t]*rgba.b) + somaAzul;
+							t++;
+						}
+						g++;
+						t = 0;
+					}
+					somaVermelho = Math.floor(somaVermelho/9);
+					somaVerde = Math.floor(somaVerde/9);
+					somaAzul = Math.floor(somaAzul/9);
+					
+					somaVermelho = escalonamento(somaVermelho, 0);
+					somaVerde = escalonamento(somaVerde, 1);
+					somaAzul = escalonamento(somaAzul, 2)
+					
+					var hex = Jimp.rgbaToInt(somaVermelho, somaVerde, somaAzul, rgba.a);
+					imagemClone.setPixelColor(hex, i, j);
+				}
+			}
+			exibirImagemFinal(imagemClone);
 		}
-		exibirImagemFinal(imagemClone);
+		else{
+			alert("Selecione uma imagem primeiro!");
+		}
 	}
 	
 	function geraHistograma(indice, filtro) {
@@ -526,48 +531,65 @@
     }
 	</script>
 	</head>
-	<body>
-	<div style="float:left">
+	<body style="width:90%; margin-left:10%">
+	<div class="row col-md-6 col-lg-6">
 		<p>Escolha um arquivo de imagem A</p>
 		<input type="file" onchange="mostrarImagem(this, 0)">
 		<p>Escolha um valor para o threshold</p>
-		<input type="number" id="valor-threshold" value="206" onchange="manipulaImagem(this, 1, 0)">
-		<input type="button" onclick="manipulaImagem(0, 0, 0)" value="Negativo">
-		<input type="button" onclick="geraHistograma(0, 0)" value="Histograma básico">
-		<input type="button" onclick="geraHistograma(0, 2)" value="Histograma normalizado">
-		<input type="button" onclick="geraHistograma(0, 3)" value="Histograma normalizado acumulado">
-		<input type="button" onclick="geraHistograma(0, 4)" value="Histograma equalizado">
-		<input type="button" onclick="filtragemEspacial(0, 0)" value="Filtragem">
+		<div class="row col-md-2 col-lg-2">
+			<input type="number" id="valor-threshold" value="206" onchange="manipulaImagem(this, 1, 0)">
+			<input type="button" class="btn btn-info" onclick="manipulaImagem(0, 0, 0)" value="Negativo">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(0, 0)" value="Histograma básico">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(0, 1)" value="Histograma acumulado">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(0, 2)" value="Histograma normalizado">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(0, 3)" value="Histograma normalizado acumulado">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(0, 4)" value="Histograma equalizado">
+			<input type="button" class="btn btn-info" onclick="filtragemEspacial(0, 0)" value="Filtragem - Realce">
+			<input type="button" class="btn btn-info" onclick="filtragemEspacial(1, 0)" value="Filtragem - Suavizar(Máscara alta)">
+			<input type="button" class="btn btn-info" onclick="filtragemEspacial(2, 0)" value="Filtragem - Realce(Máscara baixa)">
+		</div>
 		<br>
 	</div>
 	
-	<div style="display:inline-block;margin-left:17%">
-		<input type="button" onclick="manipulaDuasImagens(0)" value="E">
-		<input type="button" onclick="manipulaDuasImagens(1)" value="OU">
-		<input type="button" onclick="manipulaDuasImagens(2)" value="SOMA">
-		<input type="button" onclick="manipulaDuasImagens(3)" value="SUBTRAÇÃO">
-		<input type="button" onclick="manipulaDuasImagens(4)" value="MULTIPLICAÇÃO">
-		<input type="button" onclick="manipulaDuasImagens(5)" value="DIVISÃO">
+	<div class="row col-md-6 col-lg-6" style="float: right">
+		<p>Escolha um arquivo de imagem B</p>
+		<input type="file" onchange="mostrarImagem(this, 1)">
+		<p>Escolha um valor para o threshold</p>
+		<div class="row col-md-2 col-lg-2">
+			<input type="number" id="valor-threshold" value="206" onchange="manipulaImagem(this, 1, 1)">
+			<input type="button" class="btn btn-info" onclick="manipulaImagem(0, 0, 1)" value="Negativo">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(1, 0)" value="Histograma básico">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(1, 1)" value="Histograma acumulado">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(1, 2)" value="Histograma normalizado">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(1, 3)" value="Histograma normalizado acumulado">
+			<input type="button" class="btn btn-info" onclick="geraHistograma(1, 4)" value="Histograma equalizado">
+			<input type="button" class="btn btn-info" onclick="filtragemEspacial(0, 1)" value="Filtragem - Realce">
+			<input type="button" class="btn btn-info" onclick="filtragemEspacial(1, 1)" value="Filtragem - Suavizar(Máscara alta)">
+			<input type="button" class="btn btn-info" onclick="filtragemEspacial(2, 1)" value="Filtragem - Realce(Máscara baixa)">
+		</div>
 		<br>
+	</div>
+	<br><br>
+	
+	<div class="row col-md-6 col-lg-6" style="margin-left:5%">
+		<div class ="row container">
+			<input type="button" class="btn btn-success" onclick="manipulaDuasImagens(0)" value="E">
+			<input type="button" class="btn btn-success" onclick="manipulaDuasImagens(1)" value="OU">
+			<input type="button" class="btn btn-success" onclick="manipulaDuasImagens(2)" value="SOMA">
+			<input type="button" class="btn btn-success" onclick="manipulaDuasImagens(3)" value="SUBTRAÇÃO">
+			<input type="button" class="btn btn-success" onclick="manipulaDuasImagens(4)" value="MULTIPLICAÇÃO">
+			<input type="button" class="btn btn-success" onclick="manipulaDuasImagens(5)" value="DIVISÃO">
+			<br>
+		</div>
+		<p class="container">Resultado:</p>
 		<img id="display">
 	</div>
 	<div class="row">
-		<div class="col-md-12 col-lg-12">
+		<div class="col-md-8 col-lg-8">
 			<canvas id="myChart"></canvas>
 		</div>
 	</div>
 	
-	<div style="float:right">
-		<p>Escolha um arquivo de imagem B</p>
-		<input type="file" onchange="mostrarImagem(this, 1)">
-		<p>Escolha um valor para o threshold</p>
-		<input type="number" id="valor-threshold" value="206" onchange="manipulaImagem(this, 1, 1)">
-		<input type="button" onclick="manipulaImagem(0, 0, 1)" value="Negativo">
-		<input type="button" onclick="geraHistograma(1, 1)" value="Histograma">
-		<input type="button" onclick="filtragemEspacial(1, 1)" value="Filtragem">
-		<br>
-	</div>
-	<br><br>
 	
 	</body>
 </html>
