@@ -377,10 +377,10 @@
 					histogramaNormalizado(w*h);
 					break;
 				case 3:
-					histogramaNormalizadoAcumulado();
+					histogramaNormalizadoAcumulado(w*h);
 					break;
 				case 4:
-					histogramaEqualizado(imagemClone);
+					histogramaEqualizado(indice,w*h);
 					break;
 			}
 			graficosHistograma(vetorR, vetorG, vetorB);
@@ -407,18 +407,20 @@
 		}
 	}
 	
-	function histogramaNormalizadoAcumulado(){
-		histogramaNormalizado(w*h);
+	function histogramaNormalizadoAcumulado(tamanhoImagem){
+		histogramaNormalizado(tamanhoImagem);
 		histogramaAcumulado();
 	}
 	
-	function histogramaEqualizado(imagem){
-		histogramaNormalizadoAcumulado();
+	function histogramaEqualizado(indice, tamanhoImagem){
+		histogramaNormalizadoAcumulado(tamanhoImagem);
+		console.log(vetorR);
 		for(var z = 0; z < 256; z++){
-			vetorR[z] = vetorR[z] * 255;
-			vetorG[z] = vetorG[z] * 255;
-			vetorB[z] = vetorB[z] * 255;
+			vetorR[z] = Math.round(vetorR[z] * 255);
+			vetorG[z] = Math.round(vetorG[z] * 255);
+			vetorB[z] = Math.round(vetorB[z] * 255);
 		}
+		console.log(vetorR);
 		var imagemClone = arrayImagem[indice].clone();
 		var w = imagemClone.bitmap.width;
 		var h = imagemClone.bitmap.height;
@@ -426,9 +428,14 @@
 			for(var j = 0; j < h; j++) {
 				var cor = imagemClone.getPixelColor(i, j);
 				var rgba = Jimp.intToRGBA(cor);
+				rgba.r = vetorR[rgba.r];
+				rgba.g = vetorG[rgba.g];
+				rgba.b = vetorB[rgba.b];
+				var hex = Jimp.rgbaToInt(rgba.r, rgba.g, rgba.b, rgba.a);
+				imagemClone.setPixelColor(hex, i, j);
 			}
 		}
-		rgba.r = vetorR[rgba.r];
+		exibirImagemFinal(imagemClone);
 	}
 	
 	function graficosHistograma(vermelho, verde, azul) {
@@ -529,6 +536,7 @@
 		<input type="button" onclick="geraHistograma(0, 0)" value="Histograma básico">
 		<input type="button" onclick="geraHistograma(0, 2)" value="Histograma normalizado">
 		<input type="button" onclick="geraHistograma(0, 3)" value="Histograma normalizado acumulado">
+		<input type="button" onclick="geraHistograma(0, 4)" value="Histograma equalizado">
 		<input type="button" onclick="filtragemEspacial(0, 0)" value="Filtragem">
 		<br>
 	</div>
